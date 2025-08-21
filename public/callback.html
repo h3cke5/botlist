@@ -11,22 +11,28 @@
       justify-content: center;
       height: 100vh;
       text-align: center;
+      background: #000;
+      color: #fff;
     }
   </style>
 </head>
 <body>
-  <h2>Redirecionando...</h2>
+  <h2>🔄 Redirecionando...</h2>
 
   <script>
+    // Captura o hash da URL (contém o access_token)
     const hash = window.location.hash.substring(1);
     const params = new URLSearchParams(hash);
     const token = params.get("access_token");
 
     if (token) {
+      // Armazena no navegador
       localStorage.setItem("discord_token", token);
-      window.location.href = "/index.html"; 
+
+      // Redireciona para a página principal da botlist
+      window.location.href = "/index.html";
     } else {
-      alert("⚠️ Não foi possível fazer login com Discord.");
+      alert("⚠️ Não foi possível concluir o login com Discord.");
       window.location.href = "/index.html";
     }
   </script>
