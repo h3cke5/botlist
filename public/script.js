@@ -1,5 +1,5 @@
 // === CONFIGURAÇÕES ===
-const DISCORD_LOGIN_URL = "https://discord.com/oauth2/authorize?client_id=1014461610087174164&redirect_uri=https%3A%2F%2Fbotlist-yspk.vercel.app%2Fcallback.html&response_type=token&scope=identify";
+const DISCORD_LOGIN_URL = "https://discord.com/oauth2/authorize?client_id=1012093376604143637&redirect_uri=https%3A%2F%2Fbotlist-yspk.vercel.app%2Fcallback.html&response_type=token&scope=identify";
 const loginBtn = document.getElementById("loginBtn");
 const userAvatar = document.getElementById("userAvatar");
 const userName = document.getElementById("userName");
