@@ -1,14 +1,34 @@
-import { connectToDatabase } from "../lib/db";
+import { MongoClient } from "mongodb";
+
+let cachedClient = null;
+let cachedDb = null;
+
+async function connectToDatabase() {
+  if (cachedClient && cachedDb) return cachedDb;
+
+  const uri = process.env.MONGODB_URI; // coloque sua URI do Mongo no .env
+  const client = new MongoClient(uri);
+
+  await client.connect();
+  const db = client.db(process.env.MONGODB_DB); // nome do DB no .env
+
+  cachedClient = client;
+  cachedDb = db;
+
+  return db;
+}
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Método não permitido" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Método não permitido" });
+  }
 
   try {
-    // O corpo completo já é o bot
     const bot = req.body;
 
-    if (!bot || !bot.userId) {
-      console.log("Dados recebidos:", bot); // debug
+    // Validação básica
+    if (!bot || !bot.userId || !bot.name) {
+      console.log("Dados recebidos inválidos:", bot);
       return res.status(400).json({ error: "Dados incompletos" });
     }
 
@@ -18,6 +38,6 @@ export default async function handler(req, res) {
     res.status(200).json({ ok: true, insertedId: result.insertedId });
   } catch (err) {
     console.error("Erro ao salvar bot:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Erro interno do servidor" });
   }
 }
