@@ -81,9 +81,7 @@ async function fetchBotData(botId) {
 }
 
 // === SUBMIT BOT ===
-const botForm = document.getElementById("botForm");
-
-botForm.addEventListener("submit", async e => {
+document.getElementById("botForm").addEventListener("submit", async e => {
   e.preventDefault();
   if (!discordUser) return alert("⚠️ Faça login primeiro!");
 
@@ -93,6 +91,7 @@ botForm.addEventListener("submit", async e => {
 
   if (!botId || !botPrefix || !botDesc) return alert("⚠️ Preencha todos os campos!");
 
+  // busca dados do bot
   const botData = await fetchBotData(botId);
   const inviteLink = `https://discord.com/oauth2/authorize?client_id=${botId}&scope=bot&permissions=0`;
 
@@ -109,14 +108,22 @@ botForm.addEventListener("submit", async e => {
   };
 
   try {
+    console.log("Enviando bot para backend:", bot);
+
+    // salva bot no backend
     const addRes = await fetch("/api/add-bot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(bot)
     });
-    if (!addRes.ok) throw new Error("Erro ao salvar bot.");
+    
+    const addResText = await addRes.text();
+    if (!addRes.ok) throw new Error(`Erro ao salvar bot: ${addResText}`);
 
-    await fetch("/api/send-webhook", {
+    console.log("Bot salvo com sucesso, enviando webhook...");
+
+    // envia webhook
+    const webhookRes = await fetch("/api/send-webhook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -135,12 +142,17 @@ botForm.addEventListener("submit", async e => {
       })
     });
 
-    botForm.reset();
-    modal.style.display = "none";
+    if (!webhookRes.ok) {
+      const text = await webhookRes.text();
+      throw new Error(`Erro ao enviar webhook: ${text}`);
+    }
+
     renderBots();
+    modal.style.display = "none";
+    document.getElementById("botForm").reset();
     alert("✅ Bot enviado com sucesso!");
   } catch (err) {
-    console.error(err);
+    console.error("Erro ao enviar bot:", err);
     alert(`⚠️ Ocorreu um erro: ${err.message}`);
   }
 });
