@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL; // 🔒 seguro via env
+    const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
     const result = await fetch(WEBHOOK_URL, {
       method: "POST",
