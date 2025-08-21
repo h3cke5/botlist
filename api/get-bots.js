@@ -1,4 +1,4 @@
-import { connectToDatabase } from "../../lib/db";
+import { connectToDatabase } from "../lib/db";
 
 export default async function handler(req, res) {
   const { userId } = req.query;
