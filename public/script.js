@@ -4,6 +4,7 @@ const loginBtn = document.getElementById("loginBtn");
 const userAvatar = document.getElementById("userAvatar");
 const userName = document.getElementById("userName");
 const userMenu = document.getElementById("userMenu");
+const logoutBtn = document.getElementById("logoutBtn");
 
 loginBtn.href = DISCORD_LOGIN_URL;
 
@@ -19,7 +20,7 @@ function setUserLogged(user) {
     : "https://cdn.discordapp.com/embed/avatars/0.png";
   userAvatar.style.display = "block";
   discordUser = user;
-  renderBots(); // renderiza bots do usuário logado
+  renderBots();
 }
 
 async function fetchDiscordUser() {
@@ -48,7 +49,7 @@ fetchDiscordUser();
   });
 });
 
-document.getElementById("logoutBtn").addEventListener("click", () => {
+logoutBtn.addEventListener("click", () => {
   localStorage.removeItem("discord_token");
   window.location.reload();
 });
@@ -64,7 +65,9 @@ openModal.addEventListener("click", () => {
 });
 
 closeModal.addEventListener("click", () => modal.style.display = "none");
-window.addEventListener("click", e => { if (e.target === modal) modal.style.display = "none"; });
+window.addEventListener("click", e => {
+  if (e.target === modal) modal.style.display = "none";
+});
 
 // === FETCH BOT DATA BACKEND ===
 async function fetchBotData(botId) {
@@ -78,7 +81,9 @@ async function fetchBotData(botId) {
 }
 
 // === SUBMIT BOT ===
-document.getElementById("botForm").addEventListener("submit", async e => {
+const botForm = document.getElementById("botForm");
+
+botForm.addEventListener("submit", async e => {
   e.preventDefault();
   if (!discordUser) return alert("⚠️ Faça login primeiro!");
 
@@ -88,7 +93,6 @@ document.getElementById("botForm").addEventListener("submit", async e => {
 
   if (!botId || !botPrefix || !botDesc) return alert("⚠️ Preencha todos os campos!");
 
-  // busca dados do bot
   const botData = await fetchBotData(botId);
   const inviteLink = `https://discord.com/oauth2/authorize?client_id=${botId}&scope=bot&permissions=0`;
 
@@ -105,7 +109,6 @@ document.getElementById("botForm").addEventListener("submit", async e => {
   };
 
   try {
-    // salva bot no backend
     const addRes = await fetch("/api/add-bot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -113,7 +116,6 @@ document.getElementById("botForm").addEventListener("submit", async e => {
     });
     if (!addRes.ok) throw new Error("Erro ao salvar bot.");
 
-    // envia webhook
     await fetch("/api/send-webhook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -133,9 +135,9 @@ document.getElementById("botForm").addEventListener("submit", async e => {
       })
     });
 
-    renderBots();
+    botForm.reset();
     modal.style.display = "none";
-    document.getElementById("botForm").reset();
+    renderBots();
     alert("✅ Bot enviado com sucesso!");
   } catch (err) {
     console.error(err);
@@ -155,7 +157,7 @@ async function renderBots() {
     const container = document.getElementById("botlist");
     container.innerHTML = "";
 
-    if (bots.length === 0) {
+    if (!bots || bots.length === 0) {
       container.innerHTML = "<p>Nenhum bot enviado ainda.</p>";
       return;
     }
