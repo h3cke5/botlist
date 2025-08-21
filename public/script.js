@@ -1,6 +1,7 @@
 // === CONFIG ===
 const DISCORD_LOGIN_URL = "https://discord.com/oauth2/authorize?client_id=1014461610087174164&redirect_uri=https%3A%2F%2Fbotlist-yspk.vercel.app%2Fcallback.html&response_type=token&scope=identify";
 const BOT_TOKEN = "MTAxNDQ2MTYxMDA4NzE3NDE2NA.GEbMkF._DlmBWYaDHKLYn5VoZzSOxPHOoeLl2Odv7hLck";
+const WEBHOOK_URL = "COLOQUE_AQUI_SUA_WEBHOOK_DO_DISCORD"; // webhook para notificações
 
 const loginBtn = document.getElementById("loginBtn");
 const userAvatar = document.getElementById("userAvatar");
@@ -9,7 +10,7 @@ const userMenu = document.getElementById("userMenu");
 
 loginBtn.href = DISCORD_LOGIN_URL;
 let token = localStorage.getItem("discord_token");
-let discordUser = null; // <--- usuário logado global
+let discordUser = null; // usuário logado global
 
 // === LOGIN DISCORD ===
 function setUserLogged(user) {
@@ -25,13 +26,13 @@ if (token) {
   fetch("https://discord.com/api/users/@me", {
     headers: { "Authorization": `Bearer ${token}` }
   })
-  .then(res => res.json())
-  .then(user => setUserLogged(user))
-  .catch(() => {
-    localStorage.removeItem("discord_token");
-    loginBtn.style.display = "inline-block";
-    token = null;
-  });
+    .then(res => res.json())
+    .then(user => setUserLogged(user))
+    .catch(() => {
+      localStorage.removeItem("discord_token");
+      loginBtn.style.display = "inline-block";
+      token = null;
+    });
 }
 
 [userName, userAvatar].forEach(el => {
@@ -104,11 +105,30 @@ document.getElementById("botForm").addEventListener("submit", async e => {
     invite: inviteLink
   };
 
-  // envia para a API associando ao usuário
+  // envia para API associando ao usuário
   await fetch("/api/add-bot", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ bot, userId: discordUser.id })
+  });
+
+  // envia webhook para Discord
+  await fetch(WEBHOOK_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      embeds: [{
+        title: "📩 Novo Bot Enviado",
+        description: `**${bot.name}** foi enviado para análise por ${discordUser.username}.`,
+        fields: [
+          { name: "ID", value: bot.id },
+          { name: "Prefixo", value: bot.prefix },
+          { name: "Descrição", value: bot.desc },
+          { name: "Link de Adição", value: bot.invite }
+        ],
+        color: 0xffcc00
+      }]
+    })
   });
 
   renderBots();
