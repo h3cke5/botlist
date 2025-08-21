@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>HECKA - BOTLIST</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Hecka<span class="dot"></span></h1>
+  <div id="userArea">
+    <a id="loginBtn" class="btn-login">Login com Discord</a>
+    <div id="userInfo">
+      <span id="userName"></span>
+      <img id="userAvatar" class="avatar" style="display:none;">
+      <div id="userMenu" class="dropdown">
+        <button id="logoutBtn">Sair</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <h2 class="title">BOTLIST</h2>
+
+  <div id="botlist" class="botlist"></div>
+
+  <div class="add-bot-container">
+    <button id="addBotBtn" class="btn-add">Adicionar aplicação</button>
+  </div>
+</main>
+
+<!-- Modal adicionar bot -->
+<div id="botModal" class="modal">
+  <div class="modal-content">
+    <span id="closeModal" class="close">&times;</span>
+    <h3>Adicionar Bot</h3>
+    <form id="botForm">
+      <input type="text" id="botId" placeholder="ID do Bot" required>
+      <input type="text" id="botPrefix" placeholder="Prefixo do Bot" required>
+      <textarea id="botDesc" placeholder="Descrição do bot" required></textarea>
+      <button type="submit" class="btn-add">Salvar</button>
+    </form>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
