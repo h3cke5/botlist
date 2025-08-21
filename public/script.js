@@ -9,6 +9,7 @@ const userMenu = document.getElementById("userMenu");
 
 loginBtn.href = DISCORD_LOGIN_URL;
 let token = localStorage.getItem("discord_token");
+let discordUser = null; // <--- usuário logado global
 
 // === LOGIN DISCORD ===
 function setUserLogged(user) {
@@ -16,6 +17,8 @@ function setUserLogged(user) {
   userName.textContent = user.username;
   userAvatar.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
   userAvatar.style.display = "block";
+  discordUser = user;
+  renderBots(); // renderiza bots após login
 }
 
 if (token) {
@@ -42,52 +45,6 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
   localStorage.removeItem("discord_token");
   window.location.reload();
 });
-
-// === FUNÇÕES LOCALSTORAGE ===
-function getBots() {
-  return JSON.parse(localStorage.getItem("bots") || "[]");
-}
-
-function insertBot(bot) {
-  const bots = getBots();
-  bots.push(bot);
-  localStorage.setItem("bots", JSON.stringify(bots));
-}
-
-// === RENDER BOTS ===
-function renderBots() {
-  const bots = getBots();
-  const container = document.getElementById("botlist");
-  container.innerHTML = "";
-
-  bots.forEach(bot => {
-    let card = document.createElement("div");
-    card.className = "bot-card";
-
-    card.innerHTML = `
-      <img src="${bot.avatar}" class="bot-avatar">
-      <div class="bot-info">
-        <h3>${bot.name}</h3>
-        <p>Status: ${bot.status}</p>
-        <p>Enviado em: ${bot.date}</p>
-        <div class="dropdown-bot" style="display:none; margin-top:10px;">
-          <p><b>Prefixo:</b> ${bot.prefix}</p>
-          <p><b>Descrição:</b> ${bot.desc}</p>
-          <a href="${bot.invite}" target="_blank">[Adicionar Bot]</a>
-        </div>
-      </div>
-    `;
-
-    card.addEventListener("click", () => {
-      const dd = card.querySelector(".dropdown-bot");
-      dd.style.display = dd.style.display === "block" ? "none" : "block";
-    });
-
-    container.appendChild(card);
-  });
-}
-
-renderBots();
 
 // === MODAL ===
 const modal = document.getElementById("botModal");
@@ -127,13 +84,13 @@ async function fetchBotData(botId) {
 // === SUBMIT BOT ===
 document.getElementById("botForm").addEventListener("submit", async e => {
   e.preventDefault();
+  if (!token) return alert("⚠️ Faça login primeiro!");
 
   const botId = document.getElementById("botId").value;
   const botPrefix = document.getElementById("botPrefix").value;
   const botDesc = document.getElementById("botDesc").value;
 
   const botData = await fetchBotData(botId);
-
   const inviteLink = `https://discord.com/oauth2/authorize?client_id=${botId}&scope=bot&permissions=0`;
 
   const bot = {
@@ -147,27 +104,48 @@ document.getElementById("botForm").addEventListener("submit", async e => {
     invite: inviteLink
   };
 
-  insertBot(bot);
-
-  await fetch("/api/send-webhook", {
+  // envia para a API associando ao usuário
+  await fetch("/api/add-bot", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      embeds: [{
-        title: "📩 Novo Bot Enviado",
-        description: `**${bot.name}** foi enviado para análise.`,
-        fields: [
-          { name: "ID", value: bot.id },
-          { name: "Prefixo", value: bot.prefix },
-          { name: "Descrição", value: bot.desc },
-          { name: "Link de Adição", value: bot.invite }
-        ],
-        color: 0xffcc00
-      }]
-    })
+    body: JSON.stringify({ bot, userId: discordUser.id })
   });
 
   renderBots();
   modal.style.display = "none";
   document.getElementById("botForm").reset();
 });
+
+// === RENDER BOTS DO USUÁRIO ===
+async function renderBots() {
+  if (!token || !discordUser) return;
+
+  const res = await fetch(`/api/get-bots?userId=${discordUser.id}`);
+  const bots = await res.json();
+
+  const container = document.getElementById("botlist");
+  container.innerHTML = "";
+
+  bots.forEach(bot => {
+    const card = document.createElement("div");
+    card.className = "bot-card";
+    card.innerHTML = `
+      <img src="${bot.avatar}" class="bot-avatar">
+      <div class="bot-info">
+        <h3>${bot.name}</h3>
+        <p>Status: ${bot.status}</p>
+        <p>Enviado em: ${bot.date}</p>
+        <div class="dropdown-bot" style="display:none; margin-top:10px;">
+          <p><b>Prefixo:</b> ${bot.prefix}</p>
+          <p><b>Descrição:</b> ${bot.desc}</p>
+          <a href="${bot.invite}" target="_blank">[Adicionar Bot]</a>
+        </div>
+      </div>
+    `;
+    card.addEventListener("click", () => {
+      const dd = card.querySelector(".dropdown-bot");
+      dd.style.display = dd.style.display === "block" ? "none" : "block";
+    });
+    container.appendChild(card);
+  });
+}
