@@ -10,7 +10,7 @@ async function connectToDatabase() {
   const client = new MongoClient(uri);
 
   await client.connect();
-  const db = client.db(process.env.MONGODB_DB); // nome do DB no .env
+  const db = client.db(); // pega o banco da URI
 
   cachedClient = client;
   cachedDb = db;
