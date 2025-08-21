@@ -1,7 +1,5 @@
 // === CONFIG ===
 const DISCORD_LOGIN_URL = "https://discord.com/oauth2/authorize?client_id=1014461610087174164&redirect_uri=https%3A%2F%2Fbotlist-yspk.vercel.app%2Fcallback.html&response_type=token&scope=identify";
-const BOT_TOKEN = "MTAxNDQ2MTYxMDA4NzE3NDE2NA.GEbMkF._DlmBWYaDHKLYn5VoZzSOxPHOoeLl2Odv7hLck";
-const WEBHOOK_URL = "COLOQUE_AQUI_SUA_WEBHOOK_DO_DISCORD"; // webhook para notificações
 
 const loginBtn = document.getElementById("loginBtn");
 const userAvatar = document.getElementById("userAvatar");
@@ -10,7 +8,7 @@ const userMenu = document.getElementById("userMenu");
 
 loginBtn.href = DISCORD_LOGIN_URL;
 let token = localStorage.getItem("discord_token");
-let discordUser = null; // usuário logado global
+let discordUser = null;
 
 // === LOGIN DISCORD ===
 function setUserLogged(user) {
@@ -19,7 +17,7 @@ function setUserLogged(user) {
   userAvatar.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
   userAvatar.style.display = "block";
   discordUser = user;
-  renderBots(); // renderiza bots após login
+  renderBots(); 
 }
 
 if (token) {
@@ -66,16 +64,12 @@ window.addEventListener("click", e => { if (e.target === modal) modal.style.disp
 // === FETCH BOT DATA DISCORD ===
 async function fetchBotData(botId) {
   try {
-    const res = await fetch(`https://discord.com/api/v10/users/${botId}`, {
-      headers: { "Authorization": `Bot ${BOT_TOKEN}` }
-    });
+    const res = await fetch(`https://discord.com/api/v10/users/${botId}`);
     if (!res.ok) throw new Error("Bot não encontrado");
     const data = await res.json();
     return {
       name: data.username,
-      avatar: data.avatar
-        ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png`
-        : "https://cdn.discordapp.com/embed/avatars/0.png"
+      avatar: data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : "https://cdn.discordapp.com/embed/avatars/0.png"
     };
   } catch {
     return { name: `Bot ${botId}`, avatar: "https://cdn.discordapp.com/embed/avatars/0.png" };
@@ -112,8 +106,8 @@ document.getElementById("botForm").addEventListener("submit", async e => {
     body: JSON.stringify({ bot, userId: discordUser.id })
   });
 
-  // envia webhook para Discord
-  await fetch(WEBHOOK_URL, {
+  // envia webhook via backend
+  await fetch("/api/send-webhook", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
