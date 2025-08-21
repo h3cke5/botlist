@@ -1,3 +1,4 @@
+// === CONFIGURAÇÕES ===
 const DISCORD_LOGIN_URL = "https://discord.com/oauth2/authorize?client_id=1014461610087174164&redirect_uri=https%3A%2F%2Fbotlist-yspk.vercel.app%2Fcallback.html&response_type=token&scope=identify";
 const loginBtn = document.getElementById("loginBtn");
 const userAvatar = document.getElementById("userAvatar");
@@ -5,6 +6,7 @@ const userName = document.getElementById("userName");
 const userMenu = document.getElementById("userMenu");
 
 loginBtn.href = DISCORD_LOGIN_URL;
+
 let token = localStorage.getItem("discord_token");
 let discordUser = null;
 
@@ -12,28 +14,36 @@ let discordUser = null;
 function setUserLogged(user) {
   loginBtn.style.display = "none";
   userName.textContent = user.username;
-  userAvatar.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
+  userAvatar.src = user.avatar 
+    ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
+    : "https://cdn.discordapp.com/embed/avatars/0.png";
   userAvatar.style.display = "block";
   discordUser = user;
-  renderBots(); // renderiza os bots após login
+  renderBots(); // renderiza bots do usuário logado
 }
 
-if (token) {
-  fetch("https://discord.com/api/users/@me", {
-    headers: { "Authorization": `Bearer ${token}` }
-  })
-    .then(res => res.json())
-    .then(user => setUserLogged(user))
-    .catch(() => {
-      localStorage.removeItem("discord_token");
-      loginBtn.style.display = "inline-block";
-      token = null;
+async function fetchDiscordUser() {
+  if (!token) return;
+  try {
+    const res = await fetch("https://discord.com/api/users/@me", {
+      headers: { "Authorization": `Bearer ${token}` }
     });
+    if (!res.ok) throw new Error("Falha ao buscar usuário");
+    const user = await res.json();
+    setUserLogged(user);
+  } catch {
+    localStorage.removeItem("discord_token");
+    token = null;
+    loginBtn.style.display = "inline-block";
+  }
 }
 
+fetchDiscordUser();
+
+// === MENU DO USUÁRIO ===
 [userName, userAvatar].forEach(el => {
   el.addEventListener("click", () => {
-    if (!token) return;
+    if (!discordUser) return;
     userMenu.style.display = userMenu.style.display === "block" ? "none" : "block";
   });
 });
@@ -49,7 +59,7 @@ const openModal = document.getElementById("addBotBtn");
 const closeModal = document.getElementById("closeModal");
 
 openModal.addEventListener("click", () => {
-  if (!token) return alert("⚠️ Você precisa estar logado para adicionar um bot!");
+  if (!discordUser) return alert("⚠️ Você precisa estar logado para adicionar um bot!");
   modal.style.display = "flex";
 });
 
@@ -70,12 +80,15 @@ async function fetchBotData(botId) {
 // === SUBMIT BOT ===
 document.getElementById("botForm").addEventListener("submit", async e => {
   e.preventDefault();
-  if (!token) return alert("⚠️ Faça login primeiro!");
+  if (!discordUser) return alert("⚠️ Faça login primeiro!");
 
-  const botId = document.getElementById("botId").value;
-  const botPrefix = document.getElementById("botPrefix").value;
-  const botDesc = document.getElementById("botDesc").value;
+  const botId = document.getElementById("botId").value.trim();
+  const botPrefix = document.getElementById("botPrefix").value.trim();
+  const botDesc = document.getElementById("botDesc").value.trim();
 
+  if (!botId || !botPrefix || !botDesc) return alert("⚠️ Preencha todos os campos!");
+
+  // busca dados do bot
   const botData = await fetchBotData(botId);
   const inviteLink = `https://discord.com/oauth2/authorize?client_id=${botId}&scope=bot&permissions=0`;
 
@@ -88,77 +101,88 @@ document.getElementById("botForm").addEventListener("submit", async e => {
     status: "Pendente",
     date: new Date().toLocaleDateString("pt-BR"),
     invite: inviteLink,
-    userId: discordUser.id  // importante: salva o userId
+    userId: discordUser.id
   };
 
-  // envia para API associando ao usuário
-  const addRes = await fetch("/api/add-bot", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(bot)
-  });
+  try {
+    // salva bot no backend
+    const addRes = await fetch("/api/add-bot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bot)
+    });
+    if (!addRes.ok) throw new Error("Erro ao salvar bot.");
 
-  if (!addRes.ok) {
-    alert("Erro ao salvar bot. Tente novamente.");
-    return;
+    // envia webhook
+    await fetch("/api/send-webhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        embed: {
+          title: "📩 Novo Bot Enviado",
+          description: `**${bot.name}** foi enviado para análise por ${discordUser.username} (${discordUser.id})`,
+          thumbnail: { url: userAvatar.src },
+          fields: [
+            { name: "ID", value: bot.id },
+            { name: "Prefixo", value: bot.prefix },
+            { name: "Descrição", value: bot.desc },
+            { name: "Link de Adição", value: bot.invite }
+          ],
+          color: 0xffcc00
+        }
+      })
+    });
+
+    renderBots();
+    modal.style.display = "none";
+    document.getElementById("botForm").reset();
+    alert("✅ Bot enviado com sucesso!");
+  } catch (err) {
+    console.error(err);
+    alert(`⚠️ Ocorreu um erro: ${err.message}`);
   }
-
-  // envia webhook para Discord
-await fetch("/api/send-webhook", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    embed: {
-      title: "📩 Novo Bot Enviado",
-      description: `**${bot.name}** foi enviado para análise por ${discordUser.username} (${discordUser.id})`,
-      thumbnail: { url: `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` },
-      fields: [
-        { name: "ID", value: bot.id },
-        { name: "Prefixo", value: bot.prefix },
-        { name: "Descrição", value: bot.desc },
-        { name: "Link de Adição", value: bot.invite }
-      ],
-      color: 0xffcc00
-    }
-  })
-});
-
-  renderBots();
-  modal.style.display = "none";
-  document.getElementById("botForm").reset();
 });
 
 // === RENDER BOTS DO USUÁRIO ===
 async function renderBots() {
-  if (!token || !discordUser) return;
+  if (!discordUser) return;
 
-  const res = await fetch(`/api/get-bots?userId=${discordUser.id}`);
-  if (!res.ok) return;
-  const bots = await res.json();
+  try {
+    const res = await fetch(`/api/get-bots?userId=${discordUser.id}`);
+    if (!res.ok) throw new Error("Falha ao buscar bots");
+    const bots = await res.json();
 
-  const container = document.getElementById("botlist");
-  container.innerHTML = "";
+    const container = document.getElementById("botlist");
+    container.innerHTML = "";
 
-  bots.forEach(bot => {
-    const card = document.createElement("div");
-    card.className = "bot-card";
-    card.innerHTML = `
-      <img src="${bot.avatar}" class="bot-avatar">
-      <div class="bot-info">
-        <h3>${bot.name}</h3>
-        <p>Status: ${bot.status}</p>
-        <p>Enviado em: ${bot.date}</p>
-        <div class="dropdown-bot" style="display:none; margin-top:10px;">
-          <p><b>Prefixo:</b> ${bot.prefix}</p>
-          <p><b>Descrição:</b> ${bot.desc}</p>
-          <a href="${bot.invite}" target="_blank">[Adicionar Bot]</a>
+    if (bots.length === 0) {
+      container.innerHTML = "<p>Nenhum bot enviado ainda.</p>";
+      return;
+    }
+
+    bots.forEach(bot => {
+      const card = document.createElement("div");
+      card.className = "bot-card";
+      card.innerHTML = `
+        <img src="${bot.avatar}" class="bot-avatar">
+        <div class="bot-info">
+          <h3>${bot.name}</h3>
+          <p>Status: ${bot.status}</p>
+          <p>Enviado em: ${bot.date}</p>
+          <div class="dropdown-bot" style="display:none; margin-top:10px;">
+            <p><b>Prefixo:</b> ${bot.prefix}</p>
+            <p><b>Descrição:</b> ${bot.desc}</p>
+            <a href="${bot.invite}" target="_blank">[Adicionar Bot]</a>
+          </div>
         </div>
-      </div>
-    `;
-    card.addEventListener("click", () => {
-      const dd = card.querySelector(".dropdown-bot");
-      dd.style.display = dd.style.display === "block" ? "none" : "block";
+      `;
+      card.addEventListener("click", () => {
+        const dd = card.querySelector(".dropdown-bot");
+        dd.style.display = dd.style.display === "block" ? "none" : "block";
+      });
+      container.appendChild(card);
     });
-    container.appendChild(card);
-  });
+  } catch (err) {
+    console.error(err);
+  }
 }
