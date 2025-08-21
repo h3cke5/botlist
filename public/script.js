@@ -1,5 +1,6 @@
 // === CONFIG ===
 const DISCORD_LOGIN_URL = "https://discord.com/oauth2/authorize?client_id=1014461610087174164&redirect_uri=https%3A%2F%2Fbotlist-yspk.vercel.app%2Fcallback.html&response_type=token&scope=identify";
+const WEBHOOK_URL = "COLOQUE_AQUI_SUA_WEBHOOK_DO_DISCORD";
 
 const loginBtn = document.getElementById("loginBtn");
 const userAvatar = document.getElementById("userAvatar");
@@ -17,7 +18,7 @@ function setUserLogged(user) {
   userAvatar.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
   userAvatar.style.display = "block";
   discordUser = user;
-  renderBots(); 
+  renderBots();
 }
 
 if (token) {
@@ -61,16 +62,12 @@ openModal.addEventListener("click", () => {
 closeModal.addEventListener("click", () => modal.style.display = "none");
 window.addEventListener("click", e => { if (e.target === modal) modal.style.display = "none"; });
 
-// === FETCH BOT DATA DISCORD ===
+// === FETCH BOT DATA BACKEND ===
 async function fetchBotData(botId) {
   try {
-    const res = await fetch(`https://discord.com/api/v10/users/${botId}`);
+    const res = await fetch(`/api/fetch-bot?id=${botId}`);
     if (!res.ok) throw new Error("Bot não encontrado");
-    const data = await res.json();
-    return {
-      name: data.username,
-      avatar: data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : "https://cdn.discordapp.com/embed/avatars/0.png"
-    };
+    return await res.json();
   } catch {
     return { name: `Bot ${botId}`, avatar: "https://cdn.discordapp.com/embed/avatars/0.png" };
   }
@@ -100,14 +97,19 @@ document.getElementById("botForm").addEventListener("submit", async e => {
   };
 
   // envia para API associando ao usuário
-  await fetch("/api/add-bot", {
+  const addRes = await fetch("/api/add-bot", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ bot, userId: discordUser.id })
   });
 
-  // envia webhook via backend
-  await fetch("/api/send-webhook", {
+  if (!addRes.ok) {
+    alert("Erro ao salvar bot. Tente novamente.");
+    return;
+  }
+
+  // envia webhook para Discord
+  await fetch(WEBHOOK_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -135,6 +137,7 @@ async function renderBots() {
   if (!token || !discordUser) return;
 
   const res = await fetch(`/api/get-bots?userId=${discordUser.id}`);
+  if (!res.ok) return;
   const bots = await res.json();
 
   const container = document.getElementById("botlist");
