@@ -1,35 +1,35 @@
-// api/test-db.js
 import { MongoClient } from "mongodb";
 
-export default async function handler(req, res) {
+let cachedClient = null;
+let cachedDb = null;
+
+async function connectToDatabase() {
+  if (cachedClient && cachedDb) return cachedDb;
+
   const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    return res.status(500).json({ error: "❌ MONGODB_URI não configurada!" });
-  }
+  if (!uri) throw new Error("MONGODB_URI não definida");
 
+  const client = new MongoClient(uri, {
+    connectTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 5000,
+  });
+
+  await client.connect();
+  const dbName = process.env.MONGODB_DB || "hecka"; // banco específico
+  const db = client.db(dbName);
+
+  cachedClient = client;
+  cachedDb = db;
+  return db;
+}
+
+export default async function handler(req, res) {
   try {
-    const client = new MongoClient(uri, {
-      connectTimeoutMS: 5000,
-      serverSelectionTimeoutMS: 5000,
-    });
-
-    console.log("🔌 Tentando conectar ao MongoDB...");
-    await client.connect();
-
-    const dbName = process.env.MONGODB_DB || "hecka";
-    const db = client.db(dbName);
-
-    // só conta quantos documentos tem
+    const db = await connectToDatabase();
     const collections = await db.listCollections().toArray();
-
-    console.log("✅ Conexão bem-sucedida!");
-    res.status(200).json({
-      ok: true,
-      db: dbName,
-      collections: collections.map(c => c.name),
-    });
+    res.status(200).json({ ok: true, collections });
   } catch (err) {
-    console.error("❌ Erro de conexão:", err);
-    res.status(500).json({ error: err.message, stack: err.stack });
+    console.error("Erro no teste de DB:", err);
+    res.status(500).json({ ok: false, error: err.message });
   }
 }
