@@ -6,17 +6,17 @@ let cachedDb = null;
 async function connectToDatabase() {
   if (cachedClient && cachedDb) return cachedDb;
 
-  const uri = process.env.MONGODB_URI;
-  if (!uri) throw new Error("MONGODB_URI não definida!");
+  if (!process.env.MONGODB_URI) throw new Error("❌ MONGODB_URI não definida");
+  const client = new MongoClient(process.env.MONGODB_URI, {
+    connectTimeoutMS: 10000,
+    serverSelectionTimeoutMS: 10000,
+  });
 
-  const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
   await client.connect();
-
   const db = client.db(process.env.MONGODB_DB || "hecka");
 
   cachedClient = client;
   cachedDb = db;
-
   return db;
 }
 
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ ok: true, insertedId: result.insertedId });
   } catch (err) {
-    console.error("Erro /api/add-bot:", err);
+    console.error("❌ Erro /api/add-bot:", err);
     return res.status(500).json({ error: err.message, stack: err.stack });
   }
 }
