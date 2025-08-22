@@ -38,8 +38,7 @@ async function fetchDiscordUser() {
     if (!res.ok) throw new Error("Falha ao buscar usuário");
     const user = await res.json();
     setUserLogged(user);
-  } catch (err) {
-    console.warn("Falha ao buscar Discord user:", err);
+  } catch {
     localStorage.removeItem("discord_token");
     token = null;
     loginBtn.style.display = "inline-block";
@@ -66,7 +65,6 @@ openModal.addEventListener("click", () => {
   if (!discordUser) return alert("⚠️ Você precisa estar logado para adicionar um bot!");
   modal.style.display = "flex";
 });
-
 closeModal.addEventListener("click", () => modal.style.display = "none");
 window.addEventListener("click", e => {
   if (e.target === modal) modal.style.display = "none";
@@ -87,19 +85,19 @@ async function fetchBotData(botId) {
 botForm.addEventListener("submit", async e => {
   e.preventDefault();
   if (!discordUser) return alert("⚠️ Faça login primeiro!");
-  
+
   const botId = document.getElementById("botId").value.trim();
   const botPrefix = document.getElementById("botPrefix").value.trim();
   const botDesc = document.getElementById("botDesc").value.trim();
-  
+
   if (!botId || !botPrefix || !botDesc) return alert("⚠️ Preencha todos os campos!");
-  
+
   submitBtn.disabled = true;
   submitBtn.textContent = "Enviando...";
-  
+
   const botData = await fetchBotData(botId);
   const inviteLink = `https://discord.com/oauth2/authorize?client_id=${botId}&scope=bot&permissions=0`;
-  
+
   const bot = {
     id: botId,
     prefix: botPrefix,
@@ -111,20 +109,20 @@ botForm.addEventListener("submit", async e => {
     invite: inviteLink,
     userId: discordUser.id
   };
-  
+
   try {
-    console.log("Enviando bot para backend:", bot);
-    
+    // Salva bot no backend
     const addRes = await fetch("/api/add-bot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(bot)
     });
-    const addResText = await addRes.text();
-    if (!addRes.ok) throw new Error(`Erro ao salvar bot: ${addResText}`);
-    
-    console.log("Bot salvo com sucesso, enviando webhook...");
-    
+    if (!addRes.ok) {
+      const text = await addRes.text();
+      throw new Error(`Erro ao salvar bot: ${text}`);
+    }
+
+    // Envia webhook
     const webhookRes = await fetch("/api/send-webhook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -143,12 +141,11 @@ botForm.addEventListener("submit", async e => {
         }
       })
     });
-    
     if (!webhookRes.ok) {
       const text = await webhookRes.text();
       throw new Error(`Erro ao enviar webhook: ${text}`);
     }
-    
+
     renderBots();
     modal.style.display = "none";
     botForm.reset();
@@ -165,21 +162,20 @@ botForm.addEventListener("submit", async e => {
 // === RENDER BOTS DO USUÁRIO ===
 async function renderBots() {
   if (!discordUser) return;
-  
   botListContainer.innerHTML = "<p>Carregando bots...</p>";
-  
+
   try {
     const res = await fetch(`/api/get-bots?userId=${discordUser.id}`);
     if (!res.ok) throw new Error("Falha ao buscar bots");
-    
+
     const bots = await res.json();
     botListContainer.innerHTML = "";
-    
+
     if (!bots || bots.length === 0) {
       botListContainer.innerHTML = "<p>Nenhum bot enviado ainda.</p>";
       return;
     }
-    
+
     bots.forEach(bot => {
       const card = document.createElement("div");
       card.className = "bot-card";
