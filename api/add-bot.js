@@ -6,16 +6,33 @@ let cachedDb = null;
 async function connectToDatabase() {
   if (cachedClient && cachedDb) return cachedDb;
 
-  const uri = process.env.MONGODB_URI; // coloque sua URI do Mongo no .env
-  const client = new MongoClient(uri);
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error("❌ Variável MONGODB_URI não está definida");
+  }
 
-  await client.connect();
-  const db = client.db(); // pega o banco da URI
+  console.log("🔗 Tentando conectar ao MongoDB...");
 
-  cachedClient = client;
-  cachedDb = db;
+  const client = new MongoClient(uri, {
+    connectTimeoutMS: 10000,
+    serverSelectionTimeoutMS: 10000,
+  });
 
-  return db;
+  try {
+    await client.connect();
+    console.log("✅ Conectado ao MongoDB com sucesso");
+
+    const dbName = uri.split("/").pop().split("?")[0]; // pega o nome depois da última /
+    const db = client.db(dbName || "test");
+
+    cachedClient = client;
+    cachedDb = db;
+
+    return db;
+  } catch (err) {
+    console.error("❌ Erro na conexão com MongoDB:", err.message);
+    throw err;
+  }
 }
 
 export default async function handler(req, res) {
@@ -26,18 +43,21 @@ export default async function handler(req, res) {
   try {
     const bot = req.body;
 
-    // Validação básica
+    // Validação
     if (!bot || !bot.userId || !bot.name) {
-      console.log("Dados recebidos inválidos:", bot);
+      console.warn("⚠️ Dados inválidos recebidos:", bot);
       return res.status(400).json({ error: "Dados incompletos" });
     }
 
     const db = await connectToDatabase();
+
     const result = await db.collection("bots").insertOne(bot);
+
+    console.log("✅ Bot salvo no MongoDB:", result.insertedId);
 
     res.status(200).json({ ok: true, insertedId: result.insertedId });
   } catch (err) {
-    console.error("Erro ao salvar bot:", err);
-    res.status(500).json({ error: "Erro interno do servidor" });
+    console.error("🔥 Erro ao salvar bot:", err);
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 }
