@@ -1,4 +1,3 @@
-// backend: pega os dados do bot do Discord sem expor tokens
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Método não permitido" });
 
@@ -11,15 +10,13 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    res.status(200).json({
+    return res.status(200).json({
       id: data.id,
       name: data.username,
-      avatar: data.avatar
-        ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png`
-        : "https://cdn.discordapp.com/embed/avatars/0.png"
+      avatar: data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : "https://cdn.discordapp.com/embed/avatars/0.png"
     });
-  } catch (err) {
-    res.status(404).json({
+  } catch {
+    return res.status(404).json({
       id: botId,
       name: `Bot ${botId}`,
       avatar: "https://cdn.discordapp.com/embed/avatars/0.png"
