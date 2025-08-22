@@ -13,7 +13,9 @@ export default async function handler(req, res) {
     return res.status(200).json({
       id: data.id,
       name: data.username,
-      avatar: data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : "https://cdn.discordapp.com/embed/avatars/0.png"
+      avatar: data.avatar
+        ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png`
+        : "https://cdn.discordapp.com/embed/avatars/0.png"
     });
   } catch {
     return res.status(404).json({
