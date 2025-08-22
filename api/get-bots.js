@@ -6,12 +6,14 @@ let cachedDb = null;
 async function connectToDatabase() {
   if (cachedClient && cachedDb) return cachedDb;
 
-  const uri = process.env.MONGODB_URI;
-  if (!uri) throw new Error("MONGODB_URI não definida!");
+  if (!process.env.MONGODB_URI) throw new Error("MONGODB_URI não definida!");
 
-  const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+  const client = new MongoClient(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+
   await client.connect();
-
   const db = client.db(process.env.MONGODB_DB || "hecka");
 
   cachedClient = client;
