@@ -1,4 +1,3 @@
-// api/get-bots.js
 import { MongoClient } from "mongodb";
 
 let cachedClient = null;
@@ -8,53 +7,31 @@ async function connectToDatabase() {
   if (cachedClient && cachedDb) return cachedDb;
 
   const uri = process.env.MONGODB_URI;
-  if (!uri) throw new Error("❌ Variável MONGODB_URI não configurada no .env ou no painel da Vercel!");
+  if (!uri) throw new Error("MONGODB_URI não definida!");
 
-  try {
-    console.log("🔌 Conectando ao MongoDB...");
-    const client = new MongoClient(uri, {
-      connectTimeoutMS: 10000,
-      serverSelectionTimeoutMS: 10000,
-    });
+  const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+  await client.connect();
 
-    await client.connect();
-    console.log("✅ Conectado ao MongoDB!");
+  const db = client.db(process.env.MONGODB_DB || "hecka");
 
-    const dbName = process.env.MONGODB_DB || "hecka";
-    const db = client.db(dbName);
+  cachedClient = client;
+  cachedDb = db;
 
-    cachedClient = client;
-    cachedDb = db;
-
-    return db;
-  } catch (err) {
-    console.error("❌ Erro na conexão com MongoDB:", err);
-    throw err;
-  }
+  return db;
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Método não permitido" });
-  }
+  if (req.method !== "GET") return res.status(405).json({ error: "Método não permitido" });
+
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ error: "userId necessário" });
 
   try {
-    const { userId } = req.query;
-
-    if (!userId) {
-      console.warn("⚠️ Nenhum userId recebido:", req.query);
-      return res.status(400).json({ error: "UserId necessário" });
-    }
-
     const db = await connectToDatabase();
-
     const bots = await db.collection("bots").find({ userId }).toArray();
-
-    console.log(`✅ ${bots.length} bots encontrados para userId=${userId}`);
-
     return res.status(200).json(bots);
   } catch (err) {
-    console.error("❌ Erro no handler /api/get-bots:", err);
+    console.error("Erro /api/get-bots:", err);
     return res.status(500).json({ error: err.message, stack: err.stack });
   }
 }
